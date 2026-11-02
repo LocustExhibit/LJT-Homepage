@@ -1,0 +1,78 @@
+name: Deploy Pages from gh-pages
+
+on:
+  push:
+    branches: [gh-pages]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+
+      - uses: ruby/setup-ruby@v1.328.0
+        with:
+          ruby-version: '3.1'
+          bundler-cache: true
+
+      - name: Install UglifyJS
+        run: npm install -g uglify-js
+
+      - name: Minify JS files
+        run: |
+          uglifyjs assets/js/plugins/jquery.greedy-navigation.js assets/js/_main.js assets/js/theme.js -c -m -o assets/js/main.min.js
+
+      - name: Switch Pages source to Actions
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          API="https://api.github.com/repos/${{ github.repository }}"
+          for attempt in 1 2 3 4 5 6; do
+            echo "Attempt $attempt"
+            code=$(curl -sS -o /tmp/pages-response.json -w '%{http_code}' -X PUT \
+              -H "Accept: application/vnd.github+json" \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "$API/pages" \
+              -d '{"build_type":"workflow"}')
+            echo "HTTP $code"
+            cat /tmp/pages-response.json
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+      - id: pages
+        uses: actions/configure-pages@v6.0.0
+
+      - name: Build with Jekyll
+        run: bundle exec jekyll build --baseurl "${{ steps.pages.outputs.base_path }}"
+        env:
+          JEKYLL_ENV: production
+
+      - uses: actions/upload-pages-artifact@v5.0.0
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5.0.0

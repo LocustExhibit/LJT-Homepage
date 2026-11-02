@@ -14,4 +14,6 @@ citation: 'Junteng Liu, Weihao Zeng, Xiwen Zhang, Yijun Wang, Zifei Shan, Junxia
 
 **Venue:** arXiv, 2025
 
+**Role:** First author
+
 **Code repository:** Vision4Chart on GitHub.

@@ -14,4 +14,6 @@ citation: 'Junteng Liu, Shiqi Chen, Yu Cheng, Junxian He. (2024). &quot;On the U
 
 **Venue:** EMNLP 2024
 
+**Role:** First author
+
 **Code repository:** Universal_Truthfulness_Hyperplane on GitHub.

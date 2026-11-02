@@ -1,0 +1,15 @@
+name: Test Pages Environment
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - run: echo "ref=${{ github.ref }} name=${{ github.ref_name }}"

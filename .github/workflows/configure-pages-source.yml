@@ -1,27 +1,40 @@
-name: Inspect Pages deployment settings
+name: Configure Pages and deployment environment
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
-  actions: read
+  actions: write
 
 jobs:
-  inspect:
+  configure:
     runs-on: ubuntu-latest
     steps:
-      - name: Print Pages and environment settings
+      - name: Configure GitHub Pages source and environment
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          for endpoint in pages environments/github-pages environments/github-pages/deployment-branch-policies; do
-            echo "===== $endpoint ====="
-            curl -sS -i \
-              -H "Accept: application/vnd.github+json" \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "X-GitHub-Api-Version: 2022-11-28" \
-              "https://api.github.com/repos/${{ github.repository }}/$endpoint"
-            echo
-          done
+          API="https://api.github.com/repos/${{ github.repository }}"
+          AUTH=(-H "Accept: application/vnd.github+json" -H "Authorization: Bearer $GH_TOKEN" -H "X-GitHub-Api-Version: 2022-11-28")
+
+          echo "===== Delete temporary gh-pages branch if present ====="
+          curl -sS -i -X DELETE "${AUTH[@]}" "$API/git/refs/heads/gh-pages" || true
+          echo
+
+          echo "===== Switch Pages to GitHub Actions ====="
+          curl -sS -i -X PUT "${AUTH[@]}" "$API/pages" -d '{"build_type":"workflow"}'
+          echo
+
+          echo "===== Allow master deployments to github-pages environment ====="
+          curl -sS -i -X POST "${AUTH[@]}" "$API/environments/github-pages/deployment-branch-policies" -d '{"name":"master"}' || true
+          echo
+
+          echo "===== Verify Pages settings ====="
+          curl -sS -i "${AUTH[@]}" "$API/pages"
+          echo
+
+          echo "===== Verify deployment branch policies ====="
+          curl -sS -i "${AUTH[@]}" "$API/environments/github-pages/deployment-branch-policies"
+          echo
